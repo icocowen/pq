@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#E7E7E7"
+    >
+    <com.hjq.bar.TitleBar
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/titleBar"
+        app:backButton="true"
+        app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"
+        />
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" >
+        <RelativeLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="#ffffff"
+            android:id="@+id/topWrap"
+            >
+
+            <LinearLayout
+                android:id="@+id/avatarAndInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="20dp"
+                android:background="#ffffff"
+                android:orientation="horizontal">
+
+                <RelativeLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="#00FFFFFF">
+
+                    <ImageView
+                        android:id="@+id/avatar"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:contentDescription="头像"
+                        android:src="@mipmap/me1"
+                        />
+
+                    <TextView
+                        android:id="@+id/title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="18dp"
+                        android:layout_toEndOf="@+id/avatar"
+                        android:text="title"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/subTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@+id/title"
+                        android:layout_marginStart="18dp"
+                        android:layout_marginTop="4dp"
+                        android:layout_toEndOf="@+id/avatar"
+                        android:text="subTitle"
+                        android:textSize="14sp"
+                        android:textStyle="normal" />
+
+                </RelativeLayout>
+
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_below="@+id/avatarAndInfo"
+                android:layout_marginTop="4dp">
+
+            </LinearLayout>
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@+id/topWrap"
+            android:layout_marginTop="40dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#ffffff"
+                android:clickable="true"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:text="发消息"
+                android:id="@+id/sendMsg"
+                android:textAlignment="center"
+                android:textSize="18sp" />
+
+
+            <TextView
+                android:id="@+id/delete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/sendMsg"
+                android:layout_marginTop="10dp"
+                android:background="@color/colorAccent"
+                android:clickable="true"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:text="删除操作"
+                android:textAlignment="center"
+                android:textColor="#F7EEEE"
+                android:textSize="18sp" />
+        </RelativeLayout>
+    </RelativeLayout>
+
+
+
+
+</LinearLayout>

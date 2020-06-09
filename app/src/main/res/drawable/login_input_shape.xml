@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+
+
+
+    <!-- android:radius 弧形的半径 -->
+    <corners android:radius="20dp"/>
+
+    <!-- padding：Button里面的文字与Button边界的间隔 -->
+    <padding
+            android:left="28dp"
+            android:top="8dp"
+            android:right="28dp"
+            android:bottom="8dp"
+    />
+
+    <solid android:color="#fdf2f2f2" />
+
+</shape>
