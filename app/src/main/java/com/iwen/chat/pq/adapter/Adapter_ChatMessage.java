@@ -61,7 +61,6 @@ public class Adapter_ChatMessage extends BaseAdapter {
         String content = mChatMessage.getContent();
         String time = formatTime(mChatMessage.getTime());
         int isMeSend = mChatMessage.getIsMeSend();
-        int isRead = mChatMessage.getIsRead();////是否已读（0未读 1已读）
         final ViewHolder holder;
         if (view == null) {
             holder = new ViewHolder();
@@ -74,7 +73,6 @@ public class Adapter_ChatMessage extends BaseAdapter {
                 view = inflater.inflate(R.layout.item_chat_send_text, viewGroup, false);
                 holder.tv_content = view.findViewById(R.id.tv_content);
                 holder.tv_sendtime = view.findViewById(R.id.tv_sendtime);
-                holder.tv_isRead = view.findViewById(R.id.tv_isRead);
             }
 
             view.setTag(holder);
@@ -89,26 +87,16 @@ public class Adapter_ChatMessage extends BaseAdapter {
 
 
         //如果是自己发送才显示未读已读
-        if (isMeSend == 1) {
-            if (isRead == 0) {
-                holder.tv_isRead.setText("未读");
-                holder.tv_isRead.setTextColor(context.getResources().getColor(R.color.jmui_jpush_blue));
-            } else if (isRead == 1) {
-                holder.tv_isRead.setText("已读");
-                holder.tv_isRead.setTextColor(Color.GRAY);
-            } else {
-                holder.tv_isRead.setText("");
-            }
-        }else{
+        if (isMeSend != 1) {
             holder.tv_display_name.setVisibility(View.VISIBLE);
-            holder.tv_display_name.setText("服务器");
+            holder.tv_display_name.setText(mChatMessage.getNickName());
         }
 
         return view;
     }
 
     class ViewHolder {
-        private TextView tv_content, tv_sendtime, tv_display_name, tv_isRead;
+        private TextView tv_content, tv_sendtime, tv_display_name;
     }
 
 

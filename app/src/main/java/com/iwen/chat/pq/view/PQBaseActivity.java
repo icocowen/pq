@@ -28,7 +28,7 @@ public abstract class PQBaseActivity extends QMUIFragmentActivity implements Net
     public static NetBroadcastReceiver.NetChangeListener netEvent;// 网络状态改变监听事件
     private NetBroadcastReceiver netBroadcastReceiver;
 
-    private boolean networkFlag = true;
+    protected boolean networkFlag = true;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -138,6 +138,7 @@ public abstract class PQBaseActivity extends QMUIFragmentActivity implements Net
     @Override
     public void onNetChange(boolean netWorkState) {
         if (!netWorkState) {
+            networkFlag = false;
             Util.showToast(this, "网络不见了o(╥﹏╥)o");
         }
     }

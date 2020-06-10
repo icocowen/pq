@@ -42,7 +42,7 @@ class PQDatabaseHelper extends SQLiteOpenHelper {
                 "id int primary key" +
                 ",owner int" +
                 ",groupName varchar(20)" +
-                ",createTime int" +
+                ",createTime INTEGER" +
                 ",groupSize int)";
         //输出创建数据库的日志信息
         Log.i(PQDatabaseHelper.class.getName(), "create Database-------groups------>");
@@ -54,15 +54,17 @@ class PQDatabaseHelper extends SQLiteOpenHelper {
         //消息表
 
         sql = "create table messages(" +
-                "targetId int primary key," +
+                "targetId int ," +
                 "fromUserId int ," +
-                "sendTime int," +
-                "contentText varchar(100))";
+                "sendTime INTEGER ," +
+                "contentText varchar(100)," +
+                "primary key (targetId, sendTime))";
         db.execSQL(sql);
 
         sql = "CREATE INDEX fromUserId_id ON messages (fromUserId)";
         db.execSQL(sql);
-
+        sql = "CREATE INDEX sendTime_id ON messages (sendTime)";
+        db.execSQL(sql);
 
 
 //        sql = "create table stu_table(id int,sname varchar(20),sage int,ssex varchar(10))";

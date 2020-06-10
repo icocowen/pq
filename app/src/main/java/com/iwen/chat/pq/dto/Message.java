@@ -6,14 +6,14 @@ public class Message implements Serializable {
     //targetId可以使组id或者是用户id
     private int targetId;
     private int fromUserId;
-    private int sendTime;
+    private long sendTime;
     private String contentText;
 
 
     public Message() {
     }
 
-    public Message(int targetId, int fromUserId, int sendTime, String contentText) {
+    public Message(int targetId, int fromUserId, long sendTime, String contentText) {
         this.targetId = targetId;
         this.fromUserId = fromUserId;
         this.sendTime = sendTime;
@@ -36,11 +36,11 @@ public class Message implements Serializable {
         this.fromUserId = fromUserId;
     }
 
-    public int getSendTime() {
+    public long getSendTime() {
         return sendTime;
     }
 
-    public void setSendTime(int sendTime) {
+    public void setSendTime(long sendTime) {
         this.sendTime = sendTime;
     }
 

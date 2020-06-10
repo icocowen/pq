@@ -12,11 +12,14 @@ import androidx.annotation.Nullable;
 
 import com.iwen.chat.pq.dao.DataHelper;
 import com.iwen.chat.pq.dto.Self;
+import com.iwen.chat.pq.http.ChatMessageHandler;
+import com.iwen.chat.pq.http.ChatWebSocket;
 import com.iwen.chat.pq.http.UserManagement;
 import com.iwen.chat.pq.view.normal.HomeFragment;
 import com.qmuiteam.qmui.arch.annotation.DefaultFirstFragment;
 
 import java.util.Observable;
+import java.util.Observer;
 
 
 /**
@@ -29,7 +32,7 @@ import java.util.Observable;
  *
  */
 @DefaultFirstFragment(value = HomeFragment.class)
-public class MainHomeActivity extends PQBaseActivity {
+public class MainHomeActivity extends PQBaseActivity implements Observer {
 
     // TODO: 2020/6/8 这里
 
@@ -46,8 +49,23 @@ public class MainHomeActivity extends PQBaseActivity {
                 observable.initPQInfo(msg);
         }
     };
+    private ChatWebSocket chatWebSocket;
+    private Self self;
 
+    @Override
+    public void onNetChange(boolean netWorkState) {
+        super.onNetChange(netWorkState);
+        if (netWorkState && !networkFlag) {
+            //重新连接websocket
+            connectWebSocket();
+            networkFlag = true;
 
+            //通知其他，需要重新获取一下websocket
+            Message message = new Message();
+            message.arg1 = UpdateObservable.NEED_AFRESH_WEBSOCKET;
+            observable.initPQInfo(message);
+        }
+    }
 
     /**
      * groups 请求处理器
@@ -85,7 +103,7 @@ public class MainHomeActivity extends PQBaseActivity {
         @Override
         public void handleMessage(@NonNull Message msg) {
             super.handleMessage(msg);
-            msg.arg1 = UpdateObservable.UPDATE_MESSAGRS_FOR_GROUP; //arg1 为更新的事件
+            msg.arg1 = UpdateObservable.UPDATE_MESSAGES_FOR_GROUP; //arg1 为更新的事件
             observable.initPQInfo(msg);
         }
     };
@@ -98,9 +116,14 @@ public class MainHomeActivity extends PQBaseActivity {
         super.onCreate(savedInstanceState);
 
         Intent intent = getIntent();
-        Self self = (Self)intent.getSerializableExtra("self");
+        self = (Self)intent.getSerializableExtra("self");
+        //建立非组的websocket连接
+        chatWebSocket = ChatWebSocket.getInstance();
+
+        connectWebSocket();
 
         initData(self);
+
     }
 
     private void initData(Self self) {
@@ -123,7 +146,17 @@ public class MainHomeActivity extends PQBaseActivity {
         //获得所有未接受的消息（非组消息）
         instance.hotMessage(messageHandler, self.getToken());
 
+        //连接类
+
     }
+
+    public void connectWebSocket() {
+        //连接websocket（非组）
+        chatWebSocket.connectToChatWebSocketNonGroup(self.getToken());
+        ChatMessageHandler chatMessageHandler = chatWebSocket.getChatMessageHandlerNonGroup(self.getToken());
+        chatMessageHandler.chatMessageHandlerObserver.addObserver(this);
+    }
+
 
     public void spreadSelfData(Self self) {
         new Handler().postDelayed(()-> {
@@ -134,6 +167,12 @@ public class MainHomeActivity extends PQBaseActivity {
         }, 100);
     }
 
+    @Override
+    public void update(Observable o, Object arg) {
+        //通知信息
+        messageHandler.sendMessage((Message) arg);
+    }
+
 
 
 
@@ -142,8 +181,10 @@ public class MainHomeActivity extends PQBaseActivity {
         public static final int UPDATE_FRIENDS = 0x520;
         public static final int UPDATE_GROUPS = 0x521;
         public static final int UPDATE_MESSAGES = 0x522;
-        public static final int UPDATE_MESSAGRS_FOR_GROUP = 0x523;
+        public static final int UPDATE_MESSAGES_FOR_GROUP = 0x523;
         public static final int SPREAD_SELF_DATA = 0x524;
+        public static final int UPDATE_TO_MESSAGE_LIST = 0x525;
+        public static final int NEED_AFRESH_WEBSOCKET = 0x526;
 
         //观察者对象
         public void initPQInfo(Message message) {

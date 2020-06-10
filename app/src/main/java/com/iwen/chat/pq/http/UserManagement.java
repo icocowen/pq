@@ -4,10 +4,12 @@ package com.iwen.chat.pq.http;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import cn.hutool.json.JSONObject;
@@ -48,9 +50,9 @@ switch (msg.what) {
 * */
 public class UserManagement {
 
-    private final static String BASE_URL = "http://192.168.0.15:8080/api";
+    public final static String BASE_URL = "http://192.168.0.15:8080/api";
     public static final String USER_VERIFY_CODE_FORGET = "/user/verify/code/forget";
-    private final static int TIME_OUT = 2;
+    private final static int TIME_OUT = 4;
     public static final String USER_VERIFY_CODE = "/user/verify/code";
     public static final String MAIL = "mail";
     public static final String EMAIL = "email";
@@ -86,12 +88,15 @@ public class UserManagement {
         okHttpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
-                msg.what = 2;//失败
+                msg.what = FAILURE;//失败
                 Bundle bundle = new Bundle();
                 if(e instanceof SocketTimeoutException){//判断超时异常
                     bundle.putString("message", "连接超时＿|￣|●");
                 }else if(e instanceof ConnectException){//判断连接异常，我这里是报Failed to connect
                     bundle.putString("message", "网络不见了o(╥﹏╥)o");
+                }else {
+                    Log.e("未知错误", Objects.requireNonNull(e.getMessage()));
+                    bundle.putString("message", "未知错误＿|￣|●");
                 }
                 msg.setData(bundle);
                 handler.sendMessage(msg);
@@ -100,7 +105,7 @@ public class UserManagement {
             @Override
             public void onResponse(Call call, Response response) throws IOException {
                 JSONObject obj = JSONUtil.parseObj(response.body().string());
-                msg.what = 1;
+                msg.what = SUCCESS;
                 msg.obj = obj;
                 handler.sendMessage(msg);
             }

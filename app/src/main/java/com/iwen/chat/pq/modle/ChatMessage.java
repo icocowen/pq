@@ -4,7 +4,26 @@ public class ChatMessage {
     private String content;
     private String time;
     private int isMeSend;//0是对方发送 1是自己发送
-    private int isRead;//是否已读（0未读 1已读）
+    private String nickName;
+
+
+    public ChatMessage() {
+    }
+
+    public ChatMessage(String content, String time, int isMeSend , String nickName) {
+        this.content = content;
+        this.time = time;
+        this.isMeSend = isMeSend;
+        this.nickName = nickName;
+    }
+
+    public String getNickName() {
+        return nickName;
+    }
+
+    public void setNickName(String nickName) {
+        this.nickName = nickName;
+    }
 
     public String getContent() {
         return content;
@@ -30,11 +49,4 @@ public class ChatMessage {
         this.isMeSend = isMeSend;
     }
 
-    public int getIsRead() {
-        return isRead;
-    }
-
-    public void setIsRead(int isRead) {
-        this.isRead = isRead;
-    }
 }
