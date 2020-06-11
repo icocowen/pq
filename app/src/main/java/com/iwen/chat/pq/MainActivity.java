@@ -166,7 +166,6 @@ public class MainActivity extends PQBaseActivity {
 
         instance.login(handler, email.toString(), password.toString());
 
-
     }
 
 

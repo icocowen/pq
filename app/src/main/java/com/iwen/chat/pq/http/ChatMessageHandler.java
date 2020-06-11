@@ -6,12 +6,14 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
+import com.google.gson.Gson;
 import com.iwen.chat.pq.dao.DataHelper;
+import com.iwen.chat.pq.fun.Observable;
+import com.iwen.chat.pq.util.GsonUtil;
 import com.iwen.chat.pq.view.MainHomeActivity;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Observable;
 
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -44,7 +46,7 @@ public class ChatMessageHandler extends WebSocketListener  {
             isAlive = true;
         }else {
             JSONObject jsonObject = JSONUtil.parseObj(text);
-            Log.e("onMessage : 测试发送信息",jsonObject.toString());
+            Log.e("onMessage : 测试发送信息",text);
             Message msg = new Message();
             msg.what = 1;
             msg.obj = jsonObject;
@@ -75,13 +77,13 @@ public class ChatMessageHandler extends WebSocketListener  {
             Map<String, String> m = new HashMap<>();
             m.put("toUserId" , String.valueOf(msg.getTargetId()));
             m.put("contentText", msg.getContentText());
-            webSocket.send(JSONUtil.toJsonStr(m));
+            Gson gson = GsonUtil.getInstance();
+            webSocket.send(gson.toJson(m));
         }
     }
 
     public static class ChatMessageHandlerObserver extends Observable {
         public void chatMessageArrival(Message msg) {
-            setChanged();
             notifyObservers(msg);
         }
     }

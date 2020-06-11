@@ -6,20 +6,24 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.gson.Gson;
 import com.iwen.chat.pq.dao.DataHelper;
+import com.iwen.chat.pq.dao.PQDatabases;
 import com.iwen.chat.pq.dto.Self;
+import com.iwen.chat.pq.fun.Observable;
+import com.iwen.chat.pq.fun.Observer;
 import com.iwen.chat.pq.http.ChatMessageHandler;
 import com.iwen.chat.pq.http.ChatWebSocket;
 import com.iwen.chat.pq.http.UserManagement;
+import com.iwen.chat.pq.util.GsonUtil;
 import com.iwen.chat.pq.view.normal.HomeFragment;
 import com.qmuiteam.qmui.arch.annotation.DefaultFirstFragment;
 
-import java.util.Observable;
-import java.util.Observer;
 
 
 /**
@@ -51,6 +55,7 @@ public class MainHomeActivity extends PQBaseActivity implements Observer {
     };
     private ChatWebSocket chatWebSocket;
     private Self self;
+    private PQDatabases pqDatabases;
 
     @Override
     public void onNetChange(boolean netWorkState) {
@@ -75,6 +80,10 @@ public class MainHomeActivity extends PQBaseActivity implements Observer {
         @Override
         public void handleMessage(@NonNull Message msg) {
             super.handleMessage(msg);
+            Gson gson = GsonUtil.getInstance();
+
+
+            Log.w("执行组的handler方法", gson.toJson(msg));
             msg.arg1 = UpdateObservable.UPDATE_GROUPS; //arg1 为更新的事件
             observable.initPQInfo(msg);
         }
@@ -112,18 +121,18 @@ public class MainHomeActivity extends PQBaseActivity implements Observer {
     public final UpdateObservable observable = new UpdateObservable();
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    protected void onStart() {
+        super.onStart();
 
         Intent intent = getIntent();
         self = (Self)intent.getSerializableExtra("self");
         //建立非组的websocket连接
         chatWebSocket = ChatWebSocket.getInstance();
+        pqDatabases = new PQDatabases(this);
 
         connectWebSocket();
 
         initData(self);
-
     }
 
     private void initData(Self self) {
@@ -174,6 +183,15 @@ public class MainHomeActivity extends PQBaseActivity implements Observer {
     }
 
 
+    public void deleteFriend(String id) {
+        android.os.Message message = new android.os.Message();
+        message.arg1 = MainHomeActivity.UpdateObservable.DELETE_FRIEND_EVENT;
+        message.obj = id;
+//        pqDatabases.deleteInfoFriend(id, self.getId());
+        observable.initPQInfo(message);
+    }
+
+
 
 
     public static class UpdateObservable extends Observable {
@@ -185,11 +203,19 @@ public class MainHomeActivity extends PQBaseActivity implements Observer {
         public static final int SPREAD_SELF_DATA = 0x524;
         public static final int UPDATE_TO_MESSAGE_LIST = 0x525;
         public static final int NEED_AFRESH_WEBSOCKET = 0x526;
+        public static final int ENTERY_CHAT_FRAGMENT = 0x527;
+        public static final int DELETE_FRIEND_EVENT = 0x528;
+
+        private Object lock = new Object();
 
         //观察者对象
-        public void initPQInfo(Message message) {
-            super.setChanged();
-            super.notifyObservers(message);
+        public  void initPQInfo(Message message) {
+            synchronized (lock) {
+
+                Log.e("initPQInfo", GsonUtil.getInstance().toJson(message));
+                super.notifyObservers(message);
+            }
+
         }
     }
 }

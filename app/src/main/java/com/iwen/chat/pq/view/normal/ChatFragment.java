@@ -19,6 +19,8 @@ import com.iwen.chat.pq.dao.PQDatabases;
 import com.iwen.chat.pq.dto.Friend;
 import com.iwen.chat.pq.dto.Message;
 import com.iwen.chat.pq.dto.Self;
+import com.iwen.chat.pq.fun.Observable;
+import com.iwen.chat.pq.fun.Observer;
 import com.iwen.chat.pq.http.ChatMessageHandler;
 import com.iwen.chat.pq.http.ChatWebSocket;
 import com.iwen.chat.pq.modle.ChatMessage;
@@ -28,8 +30,6 @@ import com.iwen.chat.pq.view.MainHomeActivity;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Observable;
-import java.util.Observer;
 
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONNull;
@@ -154,10 +154,17 @@ public class ChatFragment extends PQBaseFragment implements View.OnClickListener
                 String content = et_content.getText().toString();
                 if (content.length() <= 0) {
                     Util.showToast(mContext, "消息不能为空哟");
-
+                    return;
+                }else  if (content.length() >= 100) {
+                    Util.showToast(mContext, "发送的文字不能超过100个哦");
                     return;
                 }
-                Message msg = new Message(Integer.valueOf(friend.getId()), Integer.valueOf(self.getId()), System.currentTimeMillis(), content );
+                Message msg = new Message(
+                        Integer.valueOf(friend.getId())
+                        , Integer.valueOf(self.getId())
+                        , System.currentTimeMillis()
+                        , content
+                        ,self.getId());
 
                 pqDatabases.insertMessage(msg);
                 //更新到自己的消息列表
@@ -216,15 +223,16 @@ public class ChatFragment extends PQBaseFragment implements View.OnClickListener
                             if (!(rawObj instanceof JSONNull)) {//200
                                 msg.arg2 = RECEIVED;
                                 JSONArray array = (JSONArray) rawObj;
-                                if (!array.isEmpty()) {
+                                if (array != null && !array.isEmpty()) {
 
-                                    JSONObject jObj  = JSONUtil.parseObj(array.get(0));
+                                    JSONObject jObj  = (JSONObject) array.get(0);
                                     com.iwen.chat.pq.dto.Message message = new com.iwen.chat.pq.dto.Message();
-                                    message.setTargetId(jObj.getInt("toUserId"));
-                                    message.setContentText(jObj.getStr("contentText"));
-                                    Integer fromUserId = jObj.getInt("fromUserId");
-                                    message.setFromUserId(fromUserId);
-                                    message.setSendTime(jObj.getLong("sendTime"));
+                                    message.setTargetId(Integer.valueOf((String)jObj.get("toUserId")));
+                                    message.setContentText((String)jObj.get("contentText"));
+                                    String fromUserId = (String)jObj.get("fromUserId");
+                                    message.setFromUserId(Integer.valueOf(fromUserId));
+                                    message.setSendTime(Long.parseLong((String)jObj.get("sendTime")));
+                                    message.setOwner(fromUserId);
 
                                     //chatMessageHandlerNonGroup.sendToOther(message);
                                     updateChatItem(message);

@@ -87,6 +87,7 @@ public class DataHelper {
         edit.putString(ID, null);
         edit.putString(TOKEN, null);
         edit.putString(FRIENDS_UPDATE_TIME, null);
+        edit.putString(LAST_GROUPS_UPDATE_TIME, null);
         edit.apply();
     }
 

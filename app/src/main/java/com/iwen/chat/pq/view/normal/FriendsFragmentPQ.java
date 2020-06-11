@@ -1,13 +1,16 @@
 package com.iwen.chat.pq.view.normal;
 
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 
 import com.hjq.bar.OnTitleBarListener;
@@ -17,15 +20,17 @@ import com.iwen.chat.pq.dao.PQDatabases;
 import com.iwen.chat.pq.dto.Friend;
 import com.iwen.chat.pq.dto.Self;
 import com.iwen.chat.pq.fun.FunGroupListView;
+import com.iwen.chat.pq.fun.Observable;
+import com.iwen.chat.pq.fun.Observer;
 import com.iwen.chat.pq.view.MainHomeActivity;
 import com.qmuiteam.qmui.util.QMUIDisplayHelper;
 import com.qmuiteam.qmui.widget.grouplist.QMUICommonListItemView;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Observable;
-import java.util.Observer;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import butterknife.BindView;
@@ -48,13 +53,17 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
     private JSONArray data;
     //itemObject -> id
     private ConcurrentHashMap<Object, String> friendsItemData = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String, Object> idForitemData = new ConcurrentHashMap<>();
     //id -> friendInfo
     private ConcurrentHashMap<String, Friend> friendsData = new ConcurrentHashMap<>();
+    private Set<String> preventRepeat = new HashSet<>();
     private long lastFriendsUpdateTime;
     private PQDatabases pqDatabases;
     private List<Friend> friends;
+    private Self info;
+    private DataHelper helper;
 
-
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     protected View onCreateView() {
         View root = LayoutInflater.from(getActivity()).inflate(R.layout.fragment_friends, null);
@@ -80,12 +89,18 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
                 startFragment(addFragment);
             }
         });
-        initGroupListView();
+
 
         //todo 测试fragment从activity获得值
 
-        ((MainHomeActivity) requireActivity()).observable.addObserver(this);
         pqDatabases = new PQDatabases(requireContext());
+        helper = DataHelper.getInstance();
+        info = helper.getSelfInfo(requireContext());
+        new Handler().postDelayed(()-> {
+            asyncLoadData();
+            initGroupListView();
+        }, 1);
+
         return root;
     }
 
@@ -101,6 +116,7 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
         );
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void initGroupListView() {
 
         FunGroupListView.Section section = FunGroupListView.newSection(getContext());
@@ -113,26 +129,16 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
                 bundle.putString("title", friend.getNickName());
                 bundle.putString("subTitle", "邮箱："+ friend.getEmail());
                 bundle.putString("id", friend.getId());
+                bundle.putSerializable("friend", friend);
+
                 InfoBriefFragment infoBriefFragment = new InfoBriefFragment();
                 infoBriefFragment.setArguments(bundle);
                 super.startFragment(infoBriefFragment);
             }
-//            new Handler().postDelayed(() -> {
-//                section.removeFrom(mGroupListView);
-//                section.addItemViewToTail(xx, v1 -> {});
-//                section.addTo(mGroupListView);
-//            }, 500);
 
         };
 
 
-//        View.OnLongClickListener onLongClickListener = v -> {
-//            section.removeFrom(mGroupListView);
-////            section.addItemViewToHead(itemWithDetailBelow2, onClickListener);
-////            section.addItemViewToHead(itemWithDetailBelow3, onClickListener);
-//            section.addTo(mGroupListView);
-//            return true;
-//        };
 
 
         int size = QMUIDisplayHelper.dp2px(requireContext(), 20);
@@ -141,9 +147,13 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
         section.setLeftIconSize(size, ViewGroup.LayoutParams.WRAP_CONTENT);
 
         friendsData.values().forEach(f -> {
-            QMUICommonListItemView item = createItem(f.getNickName());
-            friendsItemData.put(item, f.getId());
-            section.addItemViewToTail(item, onClickListener);
+                if (!preventRepeat.contains(f.getId())) {
+                    QMUICommonListItemView item = createItem(f.getNickName());
+                    friendsItemData.put(item, f.getId());
+                    idForitemData.put(f.getId(), item);
+                    section.addItemViewToTail(item, onClickListener);
+                    preventRepeat.add(f.getId());
+                }
         });
 
         section.setMiddleSeparatorInset(QMUIDisplayHelper.dp2px(getContext(), 16), 0);
@@ -188,6 +198,17 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
                     Log.e(FriendsFragmentPQ.this.getClass().getName(), Objects.requireNonNull(data.getString("message")));
             }
 
+        }else if (msg.arg1 == MainHomeActivity.UpdateObservable.DELETE_FRIEND_EVENT) {
+            String friendId = (String)msg.obj;
+            friendsData.remove(friendId);
+            QMUICommonListItemView item = (QMUICommonListItemView)idForitemData.get(friendId);
+            friendsItemData.remove(item);
+            idForitemData.remove(friendId);
+            preventRepeat.remove(friendId);
+
+            mGroupListView.removeView(item);
+            pqDatabases.deleteInfoFriend(friendId, info.getId());
+
         }
     }
 
@@ -198,18 +219,20 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
             super.onProgressUpdate(values);
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected void onPostExecute(String s) {
             //异步更新friends组
             initGroupListView();
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected String doInBackground(String... strings) {
 
             asyncLoadData();
             friends.forEach(d -> friendsData.put(d.getId(), d));
-            Log.i("com.iwen.chat.pq.view.normal.FriendsFragmentPQ.LoadTask", "后台加载任务执行完成");
+            Log.i("FriendsFragmentPQ", "后台加载任务执行完成");
             return null;
         }
     }
@@ -223,24 +246,28 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
 
     class SaveTask extends AsyncTask<String, Integer, String> {
 
+
+
         @Override
         protected void onProgressUpdate(Integer... values) {
             super.onProgressUpdate(values);
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected void onPostExecute(String s) {
             //异步更新friends组
             initGroupListView();
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected String doInBackground(String... strings) {
 
             //异步保存数据
-            DataHelper instance = DataHelper.getInstance();
-            instance.saveFriendsUpdateTime(requireContext(), lastFriendsUpdateTime);
-            Self info = instance.getSelfInfo(requireContext());
+
+            helper.saveFriendsUpdateTime(requireContext(), lastFriendsUpdateTime);
+
 
             if (!data.isEmpty()) {
                 asyncLoadData();
@@ -267,6 +294,7 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
                 needRemove.forEach(d -> {
                     //删除没有的好友
                     pqDatabases.deleteInfoFriend(friends.get(d).getId(), info.getId());
+                    ((MainHomeActivity)requireActivity()).deleteFriend(friends.get(d).getId());
                 });
 
                 //保存friend数据到数据库
@@ -274,10 +302,13 @@ public class FriendsFragmentPQ extends PQBaseFragment implements Observer {
 
             }
 
-            Log.i("com.iwen.chat.pq.view.normal.FriendsFragmentPQ.SaveTask", "后台保存任务执行完成");
+            Log.i("FriendsFragmentPQ", "后台保存任务执行完成");
             return null;
         }
     }
+
+
+
 
 
 }

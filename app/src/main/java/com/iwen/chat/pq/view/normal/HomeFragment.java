@@ -7,14 +7,14 @@ import android.view.View;
 import androidx.fragment.app.Fragment;
 
 import com.iwen.chat.pq.R;
+import com.iwen.chat.pq.fun.Observable;
+import com.iwen.chat.pq.fun.Observer;
 import com.iwen.chat.pq.util.StatusBarUtil;
 import com.iwen.chat.pq.view.MainHomeActivity;
 import com.next.easynavigation.view.EasyNavigationBar;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Observable;
-import java.util.Observer;
 
 //@FirstFragments(
 //        value = {
@@ -39,39 +39,10 @@ public class HomeFragment extends PQBaseFragment  {
     private List<Fragment> fragments = new ArrayList<>();
 
 
-//    @Override
-//    protected void onCreate(@Nullable Bundle savedInstanceState) {
-//        super.onCreate(savedInstanceState);
-//        setContentView(R.layout.home_activity);
-//
-//        navigationBar = findViewById(R.id.navigationBar);
-//
-//        fragments.add(new MessageFragmentPQ());
-//        fragments.add(new FriendsFragmentPQ());
-//        fragments.add(new GroupsFragmentPQ());
-//        fragments.add(new MeFragmentPQ());
-//
-//        navigationBar.titleItems(tabText)
-//                .normalIconItems(normalIcon)
-//                .selectIconItems(selectIcon)
-//                .fragmentList(fragments)
-//                .fragmentManager(getSupportFragmentManager())
-//                .canScroll(true)
-//                .build();
-//
-//
-//
-//        StatusBarUtil.setRootViewFitsSystemWindows(this,true);
-//        StatusBarUtil.setTranslucentStatus(this);
-//
-//    }
-//
-//
     public EasyNavigationBar getNavigationBar() {
         return navigationBar;
     }
 
-    private InnerObserver innerObserver = new InnerObserver();
 
 
     @Override
@@ -81,7 +52,7 @@ public class HomeFragment extends PQBaseFragment  {
         super.view = root;
 
         navigationBar = view.findViewById(R.id.navigationBar);
-//
+
         fragments.add(new MessageFragmentPQ());
         fragments.add(new FriendsFragmentPQ());
         fragments.add(new GroupsFragmentPQ());
@@ -99,22 +70,16 @@ public class HomeFragment extends PQBaseFragment  {
 
         StatusBarUtil.setRootViewFitsSystemWindows(getActivity(),true);
         StatusBarUtil.setTranslucentStatus(getActivity());
-//
-//        //注册观察者
-//        ((MainHomeActivity)getActivity()).observable.addObserver(innerObserver);
+
+        fragments.forEach(f -> {
+            ((MainHomeActivity)getActivity()).observable.addObserver((Observer) f);
+        });
 
 
         return view;
     }
 
 
-    private static class InnerObserver implements Observer {
-        @Override
-        public void update(Observable o, Object arg) {
-            Message msg = (Message)arg;
-            System.out.println(msg.arg1 + ":被通知的类 " + this.getClass().toString());
-        }
-    }
 
 
 }

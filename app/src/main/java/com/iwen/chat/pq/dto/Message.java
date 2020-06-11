@@ -9,11 +9,23 @@ public class Message implements Serializable {
     private long sendTime;
     private String contentText;
 
+    public String getOwner() {
+        return owner;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
+    }
+
+    //这条信息是谁的
+    private String owner;
+
 
     public Message() {
     }
 
-    public Message(int targetId, int fromUserId, long sendTime, String contentText) {
+    public Message(int targetId, int fromUserId, long sendTime, String contentText, String owner) {
+        this.owner = owner;
         this.targetId = targetId;
         this.fromUserId = fromUserId;
         this.sendTime = sendTime;

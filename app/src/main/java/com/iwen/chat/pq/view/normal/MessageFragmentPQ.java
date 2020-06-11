@@ -15,12 +15,15 @@ import android.view.ViewGroup;
 import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 
+import com.google.gson.Gson;
 import com.iwen.chat.pq.R;
 import com.iwen.chat.pq.dao.DataHelper;
 import com.iwen.chat.pq.dao.PQDatabases;
 import com.iwen.chat.pq.dto.Friend;
 import com.iwen.chat.pq.dto.Self;
 import com.iwen.chat.pq.fun.FunGroupListView;
+import com.iwen.chat.pq.fun.Observable;
+import com.iwen.chat.pq.fun.Observer;
 import com.iwen.chat.pq.view.MainHomeActivity;
 import com.qmuiteam.qmui.util.QMUIDisplayHelper;
 import com.qmuiteam.qmui.widget.grouplist.QMUICommonListItemView;
@@ -32,8 +35,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Observable;
-import java.util.Observer;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -95,13 +96,18 @@ public class MessageFragmentPQ extends PQBaseFragment implements Observer {
         initTitleBarBackgroundColorWithDark();
 //        initGroupListView();
         //注册监听事件
-        ((MainHomeActivity) requireActivity()).observable.addObserver(this);
 
         pqDatabases = new PQDatabases(requireContext());
 
         //加载本地信息,防止出现信息列表空白
+//        asyncLoadData();
+//        initGroupListView();
+
+
         asyncLoadData();
         initGroupListView();
+
+
 
         return root;
     }
@@ -115,10 +121,37 @@ public class MessageFragmentPQ extends PQBaseFragment implements Observer {
     public QMUICommonListItemView createMessageItem(String nickName, String brief, int icon) {
         QMUICommonListItemView itemMessage = mGroupListView.createItemView(nickName);
         itemMessage.setOrientation(QMUICommonListItemView.VERTICAL);
+        if (brief.length() > 20) {
+            brief = brief.substring(0, 20);
+        }
         itemMessage.setDetailText(brief);
         itemMessage.setImageDrawable(ContextCompat.getDrawable(requireContext(), icon));
         itemMessage.setTipPosition(QMUICommonListItemView.TIP_POSITION_LEFT);
         return itemMessage;
+    }
+
+    private void entryChatFragment(String fromId) {
+        QMUICommonListItemView t = (QMUICommonListItemView) userIdForItemData.get(fromId);
+        if (t != null) {
+            t.showRedDot(false);
+        }
+        updatedItem.remove(fromId);
+        ChatFragment chatFragment = new ChatFragment();
+        Bundle bundle = new Bundle();
+        bundle.putSerializable("self", info);
+        ArrayList<com.iwen.chat.pq.dto.Message> messages = messageDataList.get(fromId);
+        if (messages == null) {
+            messages = new ArrayList<>();
+            messageDataList.put(fromId, messages);
+        }
+        bundle.putSerializable("messages", messages);
+        Friend friend = formIdWithFromInfo.get(fromId);
+
+        bundle.putSerializable("fromUser",friend);
+        bundle.putStringArray("whoOpened", whoOpened);
+        whoOpened[0] = fromId;
+        chatFragment.setArguments(bundle);
+        startFragment(chatFragment);
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -126,20 +159,8 @@ public class MessageFragmentPQ extends PQBaseFragment implements Observer {
 
 
         View.OnClickListener onClickListener = v -> {
-
             String fromId = messageItemData.get(v);
-            QMUICommonListItemView t = (QMUICommonListItemView) userIdForItemData.get(fromId);
-            t.showRedDot(false);
-            updatedItem.remove(fromId);
-            ChatFragment chatFragment = new ChatFragment();
-            Bundle bundle = new Bundle();
-            bundle.putSerializable("self", info);
-            bundle.putSerializable("messages", messageDataList.get(fromId));
-            bundle.putSerializable("fromUser", formIdWithFromInfo.get(fromId));
-            bundle.putStringArray("whoOpened", whoOpened);
-            whoOpened[0] = fromId;
-            chatFragment.setArguments(bundle);
-            startFragment(chatFragment);
+            entryChatFragment(fromId);
         };
 
         FunGroupListView.Section section = FunGroupListView.newSection(getContext());
@@ -160,13 +181,17 @@ public class MessageFragmentPQ extends PQBaseFragment implements Observer {
                 f = formIdWithFromInfo.get(String.valueOf(m.getTargetId()));
             }
 
-            assert f != null;
             QMUICommonListItemView mItem = null;
+            if (f == null) continue;
             if (userIdForItemData.containsKey(f.getId())) {
 
                 mItem= (QMUICommonListItemView)userIdForItemData.get(f.getId());
                 assert mItem != null;
-                mItem.setDetailText(m.getContentText());
+                String brief = m.getContentText();
+                if (brief.length() > 20) {
+                    brief = brief.substring(0, 20);
+                }
+                mItem.setDetailText(brief);
 
                 ordered.remove(mItem);
                 ordered.add(mItem);
@@ -269,6 +294,25 @@ public class MessageFragmentPQ extends PQBaseFragment implements Observer {
             new Handler().postDelayed(() -> {
                 initGroupListView();
             }, 500);
+        }else if (msg.arg1 == MainHomeActivity.UpdateObservable.ENTERY_CHAT_FRAGMENT) {
+            Friend friend = (Friend)msg.obj;
+            formIdWithFromInfo.put(friend.getId(), friend);
+            entryChatFragment(friend.getId());
+        }else if (msg.arg1 == MainHomeActivity.UpdateObservable.DELETE_FRIEND_EVENT) {
+            String friendId = (String)msg.obj;
+            QMUICommonListItemView item = (QMUICommonListItemView)userIdForItemData.get(friendId);
+
+            messageDataList.remove(friendId);
+            formIdWithFromInfo.remove(friendId);
+            userIdForItemData.remove(friendId);
+            if (item != null) {
+                messageItemData.remove(item);
+            }
+            ordered.remove(item);
+            pqDatabases.deleteMessages(Integer.valueOf(friendId), info.getId());
+            preventRepeat.remove(friendId);
+            asyncLoadData();
+            initGroupListView();
         }
 
 
@@ -333,6 +377,7 @@ public class MessageFragmentPQ extends PQBaseFragment implements Observer {
 
     class SaveTask extends AsyncTask<String, Integer, String> {
 
+
         @Override
         protected void onProgressUpdate(Integer... values) {
             super.onProgressUpdate(values);
@@ -356,13 +401,14 @@ public class MessageFragmentPQ extends PQBaseFragment implements Observer {
                 final List<com.iwen.chat.pq.dto.Message> messagesList = new ArrayList<>(data.size());
                 data.forEach(d -> {
 
-                    JSONObject jObj  = JSONUtil.parseObj(d);
+                    JSONObject jObj  = (JSONObject) d;
                     com.iwen.chat.pq.dto.Message message = new com.iwen.chat.pq.dto.Message();
-                    message.setTargetId(jObj.getInt("toUserId"));
-                    message.setContentText(jObj.getStr("contentText"));
-                    Integer fromUserId = jObj.getInt("fromUserId");
-                    message.setFromUserId(fromUserId);
-                    message.setSendTime(jObj.getLong("sendTime"));
+                    message.setTargetId(Integer.valueOf((String)jObj.get("toUserId")));
+                    message.setContentText((String)jObj.get("contentText"));
+                    String fromUserId = (String)jObj.get("fromUserId");
+                    message.setFromUserId(Integer.valueOf(fromUserId));
+                    message.setSendTime(Long.valueOf((String)jObj.get("sendTime")));
+                    message.setOwner(info.getId());
                     messagesList.add(message);
 
                     updatedItem.add(String.valueOf(message.getFromUserId()));

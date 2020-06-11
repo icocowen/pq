@@ -3,8 +3,8 @@ package com.iwen.chat.pq.http;
 import android.os.Message;
 import android.util.Log;
 
-import java.util.Observable;
-import java.util.concurrent.ConcurrentHashMap;
+
+import com.iwen.chat.pq.fun.Observable;
 
 import okhttp3.Response;
 import okhttp3.WebSocket;
@@ -39,7 +39,6 @@ public class ChatGroupMessageHandler extends WebSocketListener {
 
     public static class ChatMessageHandlerObserver extends Observable {
         public void chatMessageArrival(Message msg) {
-            setChanged();
             notifyObservers(msg);
         }
     }

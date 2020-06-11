@@ -1,7 +1,9 @@
 package com.iwen.chat.pq.view.normal;
 
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -9,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 
 import com.hjq.bar.OnTitleBarListener;
@@ -18,15 +21,18 @@ import com.iwen.chat.pq.dao.PQDatabases;
 import com.iwen.chat.pq.dto.Group;
 import com.iwen.chat.pq.dto.Self;
 import com.iwen.chat.pq.fun.FunGroupListView;
+import com.iwen.chat.pq.fun.Observable;
+import com.iwen.chat.pq.fun.Observer;
+import com.iwen.chat.pq.util.GsonUtil;
 import com.iwen.chat.pq.view.MainHomeActivity;
 import com.qmuiteam.qmui.util.QMUIDisplayHelper;
 import com.qmuiteam.qmui.widget.grouplist.QMUICommonListItemView;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Observable;
-import java.util.Observer;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import butterknife.BindView;
@@ -54,8 +60,10 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
     //id -> friendInfo
     private ConcurrentHashMap<String, Group> groupsData = new ConcurrentHashMap<>();
     private List<Group> groups;
+    private Set<String> preventRepeat = new HashSet<>();
 
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     protected View onCreateView() {
         View root = LayoutInflater.from(getActivity()).inflate(R.layout.fragment_groups, null);
@@ -85,8 +93,13 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
             }
         });
 
-        ((MainHomeActivity) requireActivity()).observable.addObserver(this);
+
         pqDatabases = new PQDatabases(requireContext());
+
+        new Handler().postDelayed(()-> {
+            asyncLoadData();
+            initGroupListView();
+        }, 1);
         return root;
     }
 
@@ -101,6 +114,7 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
         );
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     private void initGroupListView() {
 
 
@@ -128,9 +142,12 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
         section.setLeftIconSize(size, ViewGroup.LayoutParams.WRAP_CONTENT);
 
         groupsData.values().forEach(g -> {
-            QMUICommonListItemView item = createItem(g.getGroupName());
-            groupsItemData.put(item, String.valueOf(g.getId()));
-            section.addItemViewToTail(item, onClickListener);
+            if (!preventRepeat.contains(String.valueOf(g.getId()))) {
+                QMUICommonListItemView item = createItem(g.getGroupName());
+                groupsItemData.put(item, String.valueOf(g.getId()));
+                section.addItemViewToTail(item, onClickListener);
+                preventRepeat.add(String.valueOf(g.getId()));
+            }
         });
 
         section.setMiddleSeparatorInset(QMUIDisplayHelper.dp2px(getContext(), 16), 0);
@@ -143,9 +160,10 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
     public void update(Observable o, Object arg) {
         Message msg = (Message) arg;
         //这里接受到通知
+        Log.e("通知组更新事件", GsonUtil.getInstance().toJson(msg));
         if (msg.arg1 == MainHomeActivity.UpdateObservable.UPDATE_GROUPS) {
             LoadTask loadTask = new LoadTask();
-
+            Log.e("通知组更新事件", GsonUtil.getInstance().toJson(msg));
             switch (msg.what) {
                 case SUCCESS:
                     JSONObject obj = (JSONObject) msg.obj;
@@ -155,6 +173,7 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
                             JSONObject tObj = (JSONObject) rawObj;
                             this.lastGroupsUpdateTime = (long) tObj.get(LAST_FRIENDS_UPDATE_TIME);
                             this.data = (JSONArray) tObj.get("groups");
+                            Log.w("组信息已经从服务器获得:", data.size() + "");
                             new SaveTask().execute("");
                             //保存联系人最后的更新时间
                             // 异步更新UI
@@ -187,19 +206,21 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
             super.onProgressUpdate(values);
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected void onPostExecute(String s) {
             //异步更新friends组
             initGroupListView();
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected String doInBackground(String... strings) {
 
             asyncLoadData();
             groups.forEach(d -> groupsData.put(String.valueOf(d.getId()), d));
 
-            Log.i("com.iwen.chat.pq.view.normal.GroupsFragmentPQ.LoadTask", "后台加载任务执行完成");
+            Log.i("GroupsFragmentPQ", "组后台加载任务执行完成");
             return null;
         }
     }
@@ -218,15 +239,17 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
             super.onProgressUpdate(values);
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected void onPostExecute(String s) {
             //异步更新friends组
             initGroupListView();
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         protected String doInBackground(String... strings) {
-
+            Log.w("组信息异步保存:", data.size() + "");
             //异步保存数据
             DataHelper instance = DataHelper.getInstance();
             instance.saveGroupsUpdateTime(requireContext(), lastGroupsUpdateTime);
@@ -240,15 +263,15 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
                 data.forEach(d -> {
                     JSONObject jObj = (JSONObject) d;
                     Group group = new Group();
-                    Integer id = jObj.getInt("id");
-                    group.setId(id);
-                    group.setCreateTime(jObj.getLong("createTime"));
-                    group.setGroupName(jObj.getStr("groupName"));
-                    group.setGroupSize(jObj.getInt("groupSize"));
+                    String id = (String)jObj.get("id");
+                    group.setId(Integer.valueOf(id));
+                    group.setCreateTime(Long.valueOf((String)jObj.get("createTime")));
+                    group.setGroupName((String)jObj.get("groupName"));
+                    group.setGroupSize(Integer.valueOf((String)jObj.get("groupSize")));
 
                     groupList.add(group);
 
-                    groupsData.put(id.toString(), group);
+                    groupsData.put(id, group);
                 });
 
                 List<Integer> needRemove = new ArrayList<>();
@@ -267,8 +290,7 @@ public class GroupsFragmentPQ extends PQBaseFragment implements Observer {
                 pqDatabases.saveGroupsList(groupList.toArray(), Integer.valueOf(info.getId()));
 
             }
-
-            Log.i("com.iwen.chat.pq.view.normal.FriendsFragmentPQ.SaveTask", "后台保存任务执行完成");
+            Log.w("组信息异步保存:", data.size() + " <---- ");
             return null;
         }
     }

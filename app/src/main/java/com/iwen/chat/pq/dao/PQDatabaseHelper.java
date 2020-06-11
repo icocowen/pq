@@ -56,6 +56,7 @@ class PQDatabaseHelper extends SQLiteOpenHelper {
         sql = "create table messages(" +
                 "targetId int ," +
                 "fromUserId int ," +
+                "owner int ," +
                 "sendTime INTEGER ," +
                 "contentText varchar(100)," +
                 "primary key (targetId, sendTime))";
@@ -64,6 +65,8 @@ class PQDatabaseHelper extends SQLiteOpenHelper {
         sql = "CREATE INDEX fromUserId_id ON messages (fromUserId)";
         db.execSQL(sql);
         sql = "CREATE INDEX sendTime_id ON messages (sendTime)";
+        db.execSQL(sql);
+        sql = "CREATE INDEX message_owner_id ON messages (owner)";
         db.execSQL(sql);
 
 

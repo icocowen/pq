@@ -69,6 +69,10 @@ public class UserManagement {
     public static final String TIME = "time";
     public static final String USER_GROUPS = "/user/groups";
     public static final String USER_HOT_MESSAGE = "/user/hot/message";
+    public static final String DELETE_FRIEND = "/user/delete/friend";
+    public static final String TARGET_ID = "targetId";
+    public static final String KEY = "key";
+    public static final String USER_SEARCH = "/user/search";
 
     private UserManagement() {}
 
@@ -104,7 +108,9 @@ public class UserManagement {
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                JSONObject obj = JSONUtil.parseObj(response.body().string());
+                String string = response.body().string();
+                JSONObject obj = JSONUtil.parseObj(string);
+                Log.e("onResponse", string);
                 msg.what = SUCCESS;
                 msg.obj = obj;
                 handler.sendMessage(msg);
@@ -191,6 +197,34 @@ public class UserManagement {
 
     public void hotMessage(Handler handler, String token) {
         HttpUrl url = HttpUrl.get(BASE_URL + USER_HOT_MESSAGE).newBuilder()
+                .build();
+        Request request = new Request.Builder()
+                .url(url)
+                .get()
+                .addHeader(AUTHORIZATION, token)
+                .build();
+        builderRequest(handler, request);
+    }
+
+    public void deleteFriend(Handler handler, String token, String targetId) {
+        HttpUrl url = HttpUrl.get(BASE_URL + DELETE_FRIEND).newBuilder()
+                .build();
+
+        FormBody body = new FormBody.Builder()
+                .add(TARGET_ID, targetId).build();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .addHeader(AUTHORIZATION, token)
+                .build();
+        builderRequest(handler, request);
+    }
+
+
+    public void search(Handler handler, String token, String key) {
+        HttpUrl url = HttpUrl.get(BASE_URL + USER_SEARCH).newBuilder()
+                .addQueryParameter(KEY, key)
                 .build();
         Request request = new Request.Builder()
                 .url(url)

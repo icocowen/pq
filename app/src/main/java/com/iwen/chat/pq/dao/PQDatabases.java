@@ -76,6 +76,7 @@ public class PQDatabases {
                 , ID+"=? and " + OWNER + "= ?"
                 , new String[]{id, owner}
         );
+
     }
 
 
@@ -111,6 +112,8 @@ public class PQDatabases {
 
 
     public void insertInfoGroups(Group group, int owner) {
+
+
         SQLiteDatabase writableDatabase = pqDatabaseHelper.getWritableDatabase();
 
         ContentValues cv = new ContentValues();
@@ -188,6 +191,11 @@ public class PQDatabases {
         }
 
         public void insertMessage(Message message) {
+
+            if (String.valueOf(message.getTargetId())
+                    .equals(String.valueOf(message.getFromUserId()))) {
+                return;
+            }
             SQLiteDatabase writableDatabase = pqDatabaseHelper.getWritableDatabase();
 
             ContentValues cv = new ContentValues();
@@ -195,6 +203,7 @@ public class PQDatabases {
             cv.put(FROM_USER_ID, message.getFromUserId());
             cv.put(SEND_TIME, message.getSendTime());
             cv.put(CONTENT_TEXT, message.getContentText());
+            cv.put(OWNER, message.getOwner());
             writableDatabase.insert(MESSAGES, null, cv);
         }
 
@@ -213,16 +222,37 @@ public class PQDatabases {
         }
 
     /**
+     * 根据指定的目标id，谁发送过来的，什么时间发送过来的
+     * @param fromId 谁发过来的
+     * @param owner
+     */
+    public void deleteMessages(int fromId, String owner) {
+        SQLiteDatabase writableDatabase = pqDatabaseHelper.getWritableDatabase();
+        writableDatabase.delete(MESSAGES
+                , TARGET_ID+"=? and "+ OWNER+"=? or " + FROM_USER_ID + "= ? and " +OWNER+"= ?"
+                , new String[]{
+                        String.valueOf(fromId)
+                        , owner
+                        , String.valueOf(fromId)
+                        , owner}
+        );
+    }
+
+    /**
      * 查找全部信息 限制在20条
      * @param selfId
      * @return
      */
     public List<Message> selectMessages(int selfId) {
         SQLiteDatabase readableDatabase = pqDatabaseHelper.getReadableDatabase();
+        String x = TARGET_ID + "= ? and "+ OWNER+"=? or "+ FROM_USER_ID + "= ? and " + OWNER + "=?";
         Cursor cursor = readableDatabase.query(MESSAGES
-                , new String[]{TARGET_ID, FROM_USER_ID, SEND_TIME, CONTENT_TEXT}
-                , TARGET_ID + "= ? or "+ FROM_USER_ID + "= ?"
-                , new String[]{String.valueOf(selfId), String.valueOf(selfId)}
+                , new String[]{TARGET_ID, FROM_USER_ID, SEND_TIME, CONTENT_TEXT,OWNER}
+                , TARGET_ID + "= ? and "+ OWNER+"=? or "+ FROM_USER_ID + "= ? and " + OWNER + "=?"
+                , new String[]{String.valueOf(selfId)
+                        ,String.valueOf(selfId)
+                        , String.valueOf(selfId)
+                        ,String.valueOf(selfId)}
                 , null, null, "sendTime desc", "20" );
 
         List<Message> list = new ArrayList<>();
@@ -231,7 +261,8 @@ public class PQDatabases {
                   cursor.getInt(0),
                     cursor.getInt(1),
                     cursor.getLong(2),
-                    cursor.getString(3)
+                    cursor.getString(3),
+                    cursor.getString(4)
             );
             list.add(msg);
         }
@@ -250,10 +281,15 @@ public class PQDatabases {
     public List<Message> selectMessagesByFromId(int fromId , int selfId, int offset) {
         SQLiteDatabase readableDatabase = pqDatabaseHelper.getReadableDatabase();
         Cursor cursor = readableDatabase.query(MESSAGES
-                , new String[]{TARGET_ID, FROM_USER_ID, SEND_TIME, CONTENT_TEXT}
-                , TARGET_ID + "= ? and "+ FROM_USER_ID + "= ? or "
-                        +TARGET_ID + "= ? and "+ FROM_USER_ID + "= ? "
-                , new String[]{String.valueOf(fromId), String.valueOf(selfId),String.valueOf(selfId),String.valueOf(fromId)}
+                , new String[]{TARGET_ID, FROM_USER_ID, SEND_TIME, CONTENT_TEXT,OWNER}
+                , TARGET_ID + "= ? and "+ FROM_USER_ID + "= ? and "+ OWNER +"=? or "
+                        +TARGET_ID + "= ? and "+ FROM_USER_ID + "= ? and " + OWNER + "=? "
+                , new String[]{String.valueOf(fromId)
+                        , String.valueOf(selfId)
+                        , String.valueOf(selfId)
+                        ,String.valueOf(selfId)
+                        ,String.valueOf(fromId)
+                        , String.valueOf(selfId)}
                 , null, null, "sendTime desc", "20 offset " + offset);
 
         List<Message> list = new ArrayList<>();
@@ -262,7 +298,8 @@ public class PQDatabases {
                     cursor.getInt(0),
                     cursor.getInt(1),
                     cursor.getLong(2),
-                    cursor.getString(3)
+                    cursor.getString(3),
+                    cursor.getString(4)
             );
             list.add(msg);
         }
